@@ -11,7 +11,6 @@ class Acronimo {
         return $this->frase;
     }
  
-  
     public function convertir(): string {
         $frase = str_replace('-', ' ', $this->frase);
  
@@ -29,4 +28,3 @@ class Acronimo {
         return $acronimo;
     }
 }
- 
