@@ -1,57 +1,64 @@
 <?php
-session_start();
 require_once 'Calculadora.php';
+
+session_start();
 
 if (!isset($_SESSION['historial'])) {
     $_SESSION['historial'] = [];
 }
 
 $resultado  = null;
-$expresion  = '';
-$a          = '';
-$b          = '';
-$operacion  = '+';
+$num1       = '';
+$num2       = '';
+$operacion  = '';
 $error      = '';
-
 
 if (isset($_POST['borrar_historial'])) {
     $_SESSION['historial'] = [];
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['borrar_historial'])) {
-    $rawA      = trim($_POST['a']         ?? '');
-    $rawB      = trim($_POST['b']         ?? '');
-    $operacion = $_POST['operacion']      ?? '+';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calcular'])) {
+    $num1      = trim($_POST['num1']      ?? '');
+    $num2      = trim($_POST['num2']      ?? '');
+    $operacion = trim($_POST['operacion'] ?? '');
 
-    if (!is_numeric($rawA) || !is_numeric($rawB)) {
-        $error = 'Por favor ingresa dos números válidos.';
+    if (!is_numeric($num1) || !is_numeric($num2)) {
+        $error = 'Ingresa numeros validos.';
+    } elseif ($operacion === '') {
+        $error = 'Selecciona una operacion.';
     } else {
-        $a   = (float)$rawA;
-        $b   = (float)$rawB;
-        $calc = new Calculadora($a, $b, $operacion);
-        $res  = $calc->calcular();
+        $calc = new Calculadora((float)$num1, (float)$num2);
 
-        if (is_string($res)) {
-            $error = $res;
-        } else {
-            $resultado = $res;
-            $expresion = $calc->getExpresion();
-            $fmtRes    = $calc->formatNumero($res);
-            array_unshift($_SESSION['historial'], [
-                'expr'   => $expresion,
-                'result' => $fmtRes,
-            ]);
-            if (count($_SESSION['historial']) > 20) {
-                array_pop($_SESSION['historial']);
-            }
+        switch ($operacion) {
+            case 'suma':
+                $resultado = $calc->sumar();
+                $simbolo   = '+';
+                break;
+            case 'resta':
+                $resultado = $calc->restar();
+                $simbolo   = '-';
+                break;
+            case 'mult':
+                $resultado = $calc->multiplicar();
+                $simbolo   = 'x';
+                break;
+            case 'div':
+                $resultado = $calc->dividir();
+                $simbolo   = '/';
+                if ($resultado === null) {
+                    $error = 'No se puede dividir entre cero.';
+                }
+                break;
+            case 'porcent':
+                $resultado = $calc->porcentaje();
+                $simbolo   = '%';
+                break;
+        }
+
+        if ($error === '' && $resultado !== null) {
+            $_SESSION['historial'][] = "$num1 $simbolo $num2 = $resultado";
         }
     }
-}
-
-function fmtNum(float $n): string {
-    return rtrim(rtrim(number_format($n, 10, '.', ''), '0'), '.');
 }
 ?>
 <!DOCTYPE html>
@@ -61,41 +68,36 @@ function fmtNum(float $n): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora</title>
     <link rel="stylesheet" href="../css/apps.css">
-    
 </head>
 <body>
 
 <div class="card">
-    <div class="badge">APP 07</div>
-    <h1><span>Calculadora</span></h1>
+    <div class="badge">App #7</div>
+    <h1>Calcula<span>dora</span></h1>
     <p class="subtitle">Operaciones básicas con historial.</p>
 
-    <form method="POST" action="" id="calcForm">
-        <div class="two-col">
-            <div>
-                <label for="a">Número A</label>
-                <input type="text" id="a" name="a"
-                       placeholder="Ej: 12.5"
-                       value="<?= htmlspecialchars((string)$a) ?>" autocomplete="off">
-            </div>
-            <div>
-                <label for="b">Número B</label>
-                <input type="text" id="b" name="b"
-                       placeholder="Ej: 4"
-                       value="<?= htmlspecialchars((string)$b) ?>" autocomplete="off">
-            </div>
-        </div>
+    <form method="POST" action="">
+        <label for="num1">Número 1</label>
+        <input type="number" id="num1" name="num1"
+            step="any" placeholder="Ej: 10"
+            value="<?= htmlspecialchars($num1) ?>">
 
-        <label>Operación</label>
-        <input type="hidden" name="operacion" id="operacionHidden" value="<?= htmlspecialchars($operacion) ?>">
-        <div class="ops-grid">
-            <?php foreach (['+', '-', '*', '/', '%'] as $op): ?>
-                <button type="button" class="op-btn <?= $operacion === $op ? 'selected' : '' ?>"
-                        data-op="<?= $op ?>"><?= htmlspecialchars($op) ?></button>
-            <?php endforeach; ?>
-        </div>
+        <label for="operacion">Operación</label>
+        <select id="operacion" name="operacion">
+            <option value="" disabled <?= $operacion === '' ? 'selected' : '' ?>>Selecciona...</option>
+            <option value="suma"           <?= $operacion === 'suma'           ? 'selected' : '' ?>>Suma (+)</option>
+            <option value="resta"          <?= $operacion === 'resta'          ? 'selected' : '' ?>>Resta (-)</option>
+            <option value="mult"           <?= $operacion === 'mult'           ? 'selected' : '' ?>>Multiplicación (x)</option>
+            <option value="div"            <?= $operacion === 'div'            ? 'selected' : '' ?>>División (/)</option>
+            <option value="porcent"        <?= $operacion === 'porcent'        ? 'selected' : '' ?>>Porcentaje (%)</option>
+        </select>
 
-        <button type="submit">Calcular →</button>
+        <label for="num2">Número 2</label>
+        <input type="number" id="num2" name="num2"
+            step="any" placeholder="Ej: 5"
+            value="<?= htmlspecialchars($num2) ?>">
+
+        <button type="submit" name="calcular">Calcular</button>
     </form>
 
     <?php if ($error): ?>
@@ -105,40 +107,25 @@ function fmtNum(float $n): string {
     <?php if ($resultado !== null): ?>
         <div class="result-box">
             <div class="result-label">Resultado</div>
-            <div class="result-phrase"><?= htmlspecialchars($expresion) ?></div>
-            <div class="result-value"><?= htmlspecialchars(fmtNum($resultado)) ?></div>
+            <div class="result-value"><?= $resultado ?></div>
         </div>
     <?php endif; ?>
 
     <?php if (!empty($_SESSION['historial'])): ?>
-        <div style="margin-top:1.5rem">
+        <div class="result-box">
             <div class="result-label">Historial</div>
-            <ul class="hist-list">
-                <?php foreach ($_SESSION['historial'] as $item): ?>
-                    <li class="hist-item">
-                        <span class="hist-expr"><?= htmlspecialchars($item['expr']) ?> =</span>
-                        <span class="hist-result"><?= htmlspecialchars($item['result']) ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <form method="POST" action="">
-                <button type="submit" name="borrar_historial" class="btn-clear">✕ Borrar historial</button>
+            <?php foreach (array_reverse($_SESSION['historial']) as $item): ?>
+                <p><?= htmlspecialchars($item) ?></p>
+            <?php endforeach; ?>
+
+            <form method="POST" action="" style="margin-top: 1rem;">
+                <button type="submit" name="borrar_historial">Borrar historial</button>
             </form>
         </div>
     <?php endif; ?>
 </div>
 
-<a class="nav-back" href="../index.php">← Volver al menú principal</a>
-
-<script>
-document.querySelectorAll('.op-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        document.getElementById('operacionHidden').value = btn.dataset.op;
-    });
-});
-</script>
+<a class="nav" href="../index.php">Volver al menú</a>
 
 </body>
 </html>

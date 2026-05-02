@@ -1,33 +1,32 @@
 <?php
 
 class Calculadora {
-    private float $a;
-    private float $b;
-    private string $operacion;
+    private float $num1;
+    private float $num2;
 
-    public function __construct(float $a, float $b, string $operacion) {
-        $this->a         = $a;
-        $this->b         = $b;
-        $this->operacion = $operacion;
+    public function __construct(float $num1, float $num2) {
+        $this->num1 = $num1;
+        $this->num2 = $num2;
     }
 
-    public function calcular(): float|string {
-        return match($this->operacion) {
-            '+'  => $this->a + $this->b,
-            '-'  => $this->a - $this->b,
-            '*'  => $this->a * $this->b,
-            '/'  => $this->b != 0 ? $this->a / $this->b : 'Error: división entre cero',
-            '%'  => $this->b != 0 ? fmod($this->a, $this->b) : 'Error: módulo entre cero',
-            default => 'Operación no válida',
-        };
+    public function sumar(): float {
+        return $this->num1 + $this->num2;
     }
 
-    public function getExpresion(): string {
-        $sym = $this->operacion;
-        return "{$this->a} {$sym} {$this->b}";
+    public function restar(): float {
+        return $this->num1 - $this->num2;
     }
 
-    public function formatNumero(float $n): string {
-        return rtrim(rtrim(number_format($n, 10, '.', ''), '0'), '.');
+    public function multiplicar(): float {
+        return $this->num1 * $this->num2;
+    }
+
+    public function dividir(): ?float {
+        if ($this->num2 == 0) return null;
+        return $this->num1 / $this->num2;
+    }
+
+    public function porcentaje(): float {
+        return ($this->num1 * $this->num2) / 100;
     }
 }

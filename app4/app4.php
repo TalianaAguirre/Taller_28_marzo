@@ -1,44 +1,52 @@
 <?php
 require_once 'Conjunto.php';
 
-$resultado = null;
-$inputA    = '';
-$inputB    = '';
-$error     = '';
-
-function parsearConjunto(string $input): ?array {
-    $partes = preg_split('/[\s,;]+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
-    $nums   = [];
-    foreach ($partes as $p) {
-        if (!preg_match('/^-?\d+$/', $p)) return null;
-        $nums[] = (int)$p;
-    }
-    return $nums;
-}
+$union        = null;
+$interseccion = null;
+$difAB        = null;
+$difBA        = null;
+$inputA       = '';
+$inputB       = '';
+$error        = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputA = trim($_POST['conjuntoA'] ?? '');
     $inputB = trim($_POST['conjuntoB'] ?? '');
 
-    $numsA = parsearConjunto($inputA);
-    $numsB = parsearConjunto($inputB);
-
-    if ($numsA === null || count($numsA) === 0) {
-        $error = 'El conjunto A debe contener números enteros válidos.';
-    } elseif ($numsB === null || count($numsB) === 0) {
-        $error = 'El conjunto B debe contener números enteros válidos.';
+    if ($inputA === '' || $inputB === '') {
+        $error = 'Ingresa ambos conjuntos.';
     } else {
-        $A = new Conjunto($numsA);
-        $B = new Conjunto($numsB);
-        $resultado = [
-            'A'            => $A,
-            'B'            => $B,
-            'union'        => $A->union($B),
-            'interseccion' => $A->interseccion($B),
-            'difAB'        => $A->diferencia($B),
-            'difBA'        => $B->diferencia($A),
-        ];
+        $partesA = preg_split('/[\s,;]+/', $inputA, -1, PREG_SPLIT_NO_EMPTY);
+        $partesB = preg_split('/[\s,;]+/', $inputB, -1, PREG_SPLIT_NO_EMPTY);
+
+        $listaA = [];
+        $listaB = [];
+
+        foreach ($partesA as $p) {
+            if (!is_numeric($p)) { $error = "\"$p\" no es un entero valido en A."; break; }
+            $listaA[] = (int)$p;
+        }
+
+        if ($error === '') {
+            foreach ($partesB as $p) {
+                if (!is_numeric($p)) { $error = "\"$p\" no es un entero valido en B."; break; }
+                $listaB[] = (int)$p;
+            }
+        }
+
+        if ($error === '') {
+            $conj         = new Conjunto($listaA, $listaB);
+            $union        = $conj->union();
+            $interseccion = $conj->interseccion();
+            $difAB        = $conj->diferenciaAB();
+            $difBA        = $conj->diferenciaBA();
+        }
     }
+}
+
+function formatSet(array $arr): string {
+    if (empty($arr)) return '{ }';
+    return '{ ' . implode(', ', $arr) . ' }';
 }
 ?>
 <!DOCTYPE html>
@@ -48,65 +56,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operaciones de Conjuntos</title>
     <link rel="stylesheet" href="../css/apps.css">
- 
 </head>
 <body>
 
-<div class="card" style="max-width:600px">
-    <div class="badge">APP 04</div>
+<div class="card">
+    <div class="badge">App #4</div>
     <h1>Operaciones de <span>Conjuntos</span></h1>
-    <p class="subtitle">Ingresa dos conjuntos de números enteros separados por comas.</p>
+    <p class="subtitle">Ingresa los elementos de cada conjunto separados por coma o espacio.</p>
 
     <form method="POST" action="">
         <label for="conjuntoA">Conjunto A</label>
         <input type="text" id="conjuntoA" name="conjuntoA"
-               placeholder="Ej: 1, 2, 3, 4, 5"
-               value="<?= htmlspecialchars($inputA) ?>" autocomplete="off">
+            placeholder="Ej: 1, 2, 3, 4"
+            value="<?= htmlspecialchars($inputA) ?>"
+            autocomplete="off">
 
         <label for="conjuntoB">Conjunto B</label>
         <input type="text" id="conjuntoB" name="conjuntoB"
-               placeholder="Ej: 3, 4, 5, 6, 7"
-               value="<?= htmlspecialchars($inputB) ?>" autocomplete="off">
+            placeholder="Ej: 3, 4, 5, 6"
+            value="<?= htmlspecialchars($inputB) ?>"
+            autocomplete="off">
 
-        <button type="submit">Calcular →</button>
+        <button type="submit">Calcular</button>
     </form>
 
     <?php if ($error): ?>
         <p class="error"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
-    <?php if ($resultado !== null): ?>
-        <div class="result-box" style="text-align:left">
-            <div class="result-label" style="text-align:center;margin-bottom:0.8rem">Resultados</div>
-            <div class="op-row">
-                <span class="op-name">A</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['A']) ?></span>
-            </div>
-            <div class="op-row">
-                <span class="op-name">B</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['B']) ?></span>
-            </div>
-            <div class="op-row">
-                <span class="op-name">A ∪ B</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['union']) ?></span>
-            </div>
-            <div class="op-row">
-                <span class="op-name">A ∩ B</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['interseccion']) ?></span>
-            </div>
-            <div class="op-row">
-                <span class="op-name">A − B</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['difAB']) ?></span>
-            </div>
-            <div class="op-row">
-                <span class="op-name">B − A</span>
-                <span class="op-value"><?= htmlspecialchars((string)$resultado['difBA']) ?></span>
-            </div>
+    <?php if ($union !== null): ?>
+        <div class="result-box">
+            <div class="result-label">Resultados</div>
+            <table class="result-table">
+                <tr>
+                    <td>A</td>
+                    <td><?= formatSet($conj->getA()) ?></td>
+                </tr>
+                <tr>
+                    <td>B</td>
+                    <td><?= formatSet($conj->getB()) ?></td>
+                </tr>
+                <tr>
+                    <td>A &cup; B (Union)</td>
+                    <td><?= formatSet($union) ?></td>
+                </tr>
+                <tr>
+                    <td>A &cap; B (Interseccion)</td>
+                    <td><?= formatSet($interseccion) ?></td>
+                </tr>
+                <tr>
+                    <td>A &minus; B</td>
+                    <td><?= formatSet($difAB) ?></td>
+                </tr>
+                <tr>
+                    <td>B &minus; A</td>
+                    <td><?= formatSet($difBA) ?></td>
+                </tr>
+            </table>
         </div>
     <?php endif; ?>
 </div>
 
-<a class="nav-back" href="../index.php">← Volver al menú principal</a>
+<a class="nav" href="../index.php">Volver al menú</a>
 
 </body>
 </html>
